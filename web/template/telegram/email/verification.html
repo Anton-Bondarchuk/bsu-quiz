@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ваш код подтверждения</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .container {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 20px;
+        background-color: #f9f9f9;
+      }
+      .code-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 20px 0;
+      }
+      .code {
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        padding: 10px 15px;
+        margin-right: 10px;
+        background-color: #eaeaea;
+        border-radius: 4px;
+        letter-spacing: 2px;
+        /* Remove borders and input appearance */
+        border: none;
+        outline: none;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        /* Make it unclickable but still selectable */
+        pointer-events: none;
+        user-select: all;
+      }
+      /* Special handling for when selecting the text */
+      .code::selection {
+        background-color: rgba(76, 175, 80, 0.3);
+      }
+      .copy-button {
+        background-color: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-size: 14px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        transition: background-color 0.3s;
+        position: relative;
+        z-index: 10; /* Ensure button is above other elements */
+        pointer-events: auto; /* Explicitly enable pointer events */
+      }
+      .copy-button:hover {
+        background-color: #45a049;
+      }
+      .tooltip {
+        position: relative;
+        display: inline-block;
+        pointer-events: auto; /* Ensure tooltip container allows interactions */
+      }
+      .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 140px;
+        background-color: #555;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 20; /* Higher than button */
+        bottom: 150%;
+        left: 50%;
+        margin-left: -75px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        pointer-events: none; /* Prevent tooltip from blocking clicks */
+      }
+      .tooltip .tooltiptext::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        border-width: 5px;
+        border-style: solid;
+        border-color: #555 transparent transparent transparent;
+        pointer-events: none;
+      }
+      .copy-button:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+      }
+      .footer {
+        margin-top: 20px;
+        font-size: 12px;
+        color: #777;
+        text-align: center;
+      }
+      .logo {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Здравствуйте, {{.Login}}!</h2>
+      <p>
+        Благодарим вас за регистрацию на платформе Quiz. Для подтверждения
+        вашего электронного адреса, пожалуйста, используйте следующий код:
+      </p>
+
+      <div class="code-container">
+        <input
+          type="text"
+          value="{{.Code}}"
+          id="code-input-id"
+          class="code"
+          readonly
+          onfocus="this.blur()"
+        />
+        
+      </div>
+
+      <p>
+        Срок действия этого кода истечет через <strong>{{.ExpiresIn}}</strong>.
+      </p>
+
+      <p>
+        Если вы не запрашивали этот код, пожалуйста, проигнорируйте это письмо.
+      </p>
+    </div>
+
+    <script>
+      // Simplified copy function
+      function copyCode() {
+        var copyText = document.getElementById("code-input-id");
+        
+        // Create a temporary textarea to handle the copy operation
+        var textArea = document.createElement("textarea");
+        textArea.value = copyText.value;
+        document.body.appendChild(textArea);
+        textArea.select();
+        
+        try {
+          // Execute copy command
+          var successful = document.execCommand('copy');
+          
+          // Show success/failure message
+          var tooltip = document.getElementById("toolpit-span-copy");
+          if (successful) {
+            tooltip.innerHTML = "Скопировано: " + copyText.value;
+          } else {
+            tooltip.innerHTML = "Не удалось скопировать";
+          }
+          
+          // Show tooltip
+          tooltip.style.visibility = "visible";
+          tooltip.style.opacity = "1";
+          
+          // Hide tooltip after 2 seconds
+          setTimeout(function() {
+            tooltip.style.visibility = "hidden";
+            tooltip.style.opacity = "0";
+            // Reset tooltip text after hiding
+            setTimeout(function() {
+              tooltip.innerHTML = "Копировать";
+            }, 300);
+          }, 2000);
+          
+        } catch (err) {
+          console.error('Failed to copy: ', err);
+        }
+        
+        // Remove the temporary textarea
+        document.body.removeChild(textArea);
+      }
+      
+      // Make sure input doesn't look active on page load
+      document.addEventListener("DOMContentLoaded", function () {
+        document.getElementById("code-input-id").blur();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+env: "local"
+
+storage:
+  database_url: "postgres://postgres:postgres@localhost:5432/postgres"
+
+server:
+  port: 8080
+
+bot:
+  token: "5790471717:AAGNWzn5g5apmzaBARgjJz5TCsQrZpru9ZI"
+  timeout: 60
+  debug: true
+
+web_app:
+  url: ""
+  port: 8081
+
+email:
+  host: "smtp.gmail.com"
+  port: 587
+  username: ""
+  password: ""
+  from_email: "quiz.bsu@gmail.com"
+  from_name: "Quiz Platform"
+  domain: "bsu.by"
+  prefix: "rct."
+  template_dir: "./web/template/telegram/email"
+  debug: false
+
+redis:
+  addr: "localhost:6379"
+  password: "12345678"
+  db: 0 
+  key_prefix: "telegram_bot:" 
+  default_expiry: 24
