@@ -38,7 +38,7 @@ func (r *CommandRouter) HandleCommand(ctx context.Context, fsm *FSMContext, mess
 	r.mu.RUnlock()
 
 	if exists {
-		handler(message, fsm)
+		go handler(message, fsm)
 		
 		return nil
 	}

@@ -6,6 +6,8 @@ import (
 	"bsu-quiz/internal/infra/logger/handlers/slogpretty"
 	"bsu-quiz/internal/infra/repository"
 	"context"
+	tgservices "bsu-quiz/internal/infra/services/telegram"
+
 
 	"log/slog"
 	"os"
@@ -57,7 +59,7 @@ func newPgxConn(ctx context.Context, cfg config.StorageConfig) *pgxpool.Pool {
 func newRedisStorage(ctx context.Context, cfg config.RedisConfig) *repository.RedisStorage {
 	storage := repository.NewRedisStorage(cfg)
 
-	if err := storage.Ping(context.Background()); err != nil {
+	if err := storage.Ping(ctx); err != nil {
 		panic(err)
 	}
 
@@ -94,4 +96,28 @@ func setupPrettySlog() *slog.Logger {
 	handler := opts.NewPrettyHandler(os.Stdout)
 
 	return slog.New(handler)
+}
+
+func Start(ctx context.Context, a *AppTelegram) {
+	for update := range a.Bot.UpdateChannel {
+		if update.Message == nil {
+			continue
+		}
+
+		chatID := update.Message.Chat.ID
+		userID := update.Message.From.ID
+		message := update.Message
+	
+		fsm := tgservices.NewFSMContext(ctx, a.router.Storage, chatID, userID)
+
+		if update.Message.IsCommand() {
+			if err := a.commandRouter.HandleCommand(ctx, fsm, message, a.Bot); err != nil {
+				a.Log.Error("Error handling command: %v", err)
+			}
+		} else {
+			if err := a.router.ProcessUpdate(ctx, message, a.Bot, fsm); err != nil {
+				a.Log.Error("Error processing update: %v", err)
+			}
+		}
+	}
 }

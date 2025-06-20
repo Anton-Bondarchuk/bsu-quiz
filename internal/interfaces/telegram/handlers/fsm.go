@@ -5,8 +5,7 @@ import (
 	infra "bsu-quiz/internal/infra/services/telegram"
 	ports "bsu-quiz/internal/ports/telegram"
 	"context"
-	"errors"
-	"log"
+	"log/slog"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -17,12 +16,14 @@ type EmailServicer interface {
 }
 
 type fSMHandler struct {
+	log          *slog.Logger
 	emailService EmailServicer
 	userRepo     ports.UserRepositorier
 	otpGenerator ports.VerificationCodeGenerater
 }
 
 func NewFSMHandler(
+	log *slog.Logger,
 	emailService EmailServicer,
 	userRepo ports.UserRepositorier,
 	otpGenerator ports.VerificationCodeGenerater,
@@ -34,88 +35,110 @@ func NewFSMHandler(
 	}
 }
 
-func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) error {
+func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	login := message.Text
+	const op = "fsm.handle_login"
 
-	// Store login in FSM data
 	if err := fsm.SetData("login", login); err != nil {
-		panic(err)
+		h.log.With(
+			slog.String("op", op),
+			slog.String("err", err.Error()),
+		)
+		return
 	}
 
 	otp, err := h.otpGenerator.Generate()
 	if err != nil {
-		panic(err)
+		h.log.With(
+			slog.String("op", op),
+			slog.String("err", err.Error()),
+		)
+		return
 	}
 
 	err = fsm.SetData("code", otp)
 
 	if err != nil {
-		panic(err)
+		h.log.With(
+			slog.String("op", op),
+			slog.String("err", err.Error()),
+		)
+		return
 	}
 
 	expiresAt := time.Now().Add(30 * time.Minute)
 
 	if err := h.emailService.Send(login, "Your Verification Code", otp, expiresAt); err != nil {
-		log.Printf("Failed to sentd verification email: %v", err)
+		h.log.Error("Failed to sentd verification email: %v", err)
 	} else {
-		log.Printf("Verification email sent to %s", login)
+		h.log.Debug("Verification email sent to %s", login)
 	}
 
-	// msg := tgbotapi.NewMessage(message.Chat.ID, "Спасибо. На ваш [email](https://webmail.bsu.by/owa/#path=/mail) был выслан проверочный код. \n Пожалуйста, введите его:")
-	// msg.ParseMode = "MarkdownV2"
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Спасибо! На ваш <a href=\"https://webmail.bsu.by/owa/#path=/mail\">email</a> был выслан проверочный код. \nПожалуйста, введите его:")
+	htmlMsg := "Спасибо! На ваш <a href=\"https://webmail.bsu.by/owa/#path=/mail\">email</a> был выслан проверочный код. \nПожалуйста, введите его:"
+	msg := tgbotapi.NewMessage(message.Chat.ID, htmlMsg)
 	msg.ParseMode = "HTML"
-	_, err = bot.Telegram.Send(msg)
-	if err != nil {
-		panic(err)
-	}
-
-	return fsm.Set(models.StateAwaitingOTP)
+	bot.Telegram.Send(msg)
+	fsm.Set(models.StateAwaitingOTP)
 }
 
-func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) error {
+func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	inputOTP := message.Text
+	const op = "fsm.handle_otp"
 	fsmOTP, err := fsm.GetData("code")
 	if err != nil {
-		panic(err)
+		h.log.With(
+			slog.String("op", op),
+			slog.String("err", err.Error()),
+		)
+		return
 	}
 
 	loginInterface, err := fsm.GetData("login")
 	if err != nil {
-		panic(err)
+		h.log.With(
+			slog.String("op", op),
+			slog.String("err", err.Error()),
+		)
 	}
 
 	login, ok := loginInterface.(string)
 	if !ok {
-		return errors.New("invalid login data format")
+		h.log.With(
+			slog.String("op", op),
+			slog.String("login", login),
+		)
+		return
 	}
 
 	if len(inputOTP) != 6 || inputOTP != fsmOTP {
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Неверный проверочный код. Введите проверчный код:")
 		_, err := bot.Telegram.Send(msg)
-		panic(err)
+		h.log.With(
+			slog.String("op", op),
+			slog.String("otp", inputOTP),
+			slog.String("err", err.Error()),
+		)
+		return
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Регастрация завершена! Добро пожаловать, "+login+"!"+"\nВы можете перейти к сервису прохождения викторин кликнув на /quiz")
-	_, err = bot.Telegram.Send(msg)
-	if err != nil {
-		panic(err)
-	}
-
-	return fsm.Set(models.StateRegistered)
+	bot.Telegram.Send(msg)
+	fsm.Set(models.StateRegistered)
 }
 
-func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) error {
+func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	loginInterface, err := fsm.GetData("login")
+	const op = "fsm.hanle_registered"
 	if err != nil {
-		return err
+		h.log.With(
+			slog.String("op", op),
+			slog.String("err", err.Error()),
+		)
+		return
 	}
 
-	login, ok := loginInterface.(string)
-	if !ok {
-		return errors.New("invalid login data format")
-	}
-
+	// note: login was verifided in endpoint above
+	login, _ := loginInterface.(string)
 	user := &models.User{
 		ID:    bot.Telegram.Self.ID,
 		Login: login,
@@ -124,16 +147,18 @@ func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *infra.FSMContext
 
 	err = h.userRepo.UpdateOrCreate(ctx, user)
 	if err != nil {
-		panic(err)
+		h.log.With(
+			slog.String("op", op),
+			slog.String("err", err.Error()),
+		)
+		return
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Привет "+login+"! Вы уже зарегистрированы.")
-	_, err = bot.Telegram.Send(msg)
-	return err
+	bot.Telegram.Send(msg)
 }
 
-func (h *fSMHandler) HandleDefault(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) error {
-	msg := tgbotapi.NewMessage(message.Chat.ID, "I'm not sure how to respond. Try using the /start command.")
-	_, err := bot.Telegram.Send(msg)
-	return err
+func (h *fSMHandler) HandleDefault(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
+	msg := tgbotapi.NewMessage(message.Chat.ID, "Я не уверен, как ответить. Попробуйте использовать команду /start.")
+	bot.Telegram.Send(msg)
 }

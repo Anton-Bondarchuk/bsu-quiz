@@ -33,17 +33,15 @@ func NewAppTelegram() (
 
 	cfg := config.MustLoad()
 	log := setupLogger(cfg.Env)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 
 	telegramBot := newBot(cfg.BotConfig)
 	
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	db := newPgxConn(ctx, cfg.StorageConfig)
 
 	log.Info("Connected to database successfully")
-
-	ctx = context.Background()
 
 	redisStorage := newRedisStorage(ctx, cfg.RedisConfig)
 
@@ -54,7 +52,12 @@ func NewAppTelegram() (
 	userRepo := repository.NewPgUserRepository(db)
 	otpGenerator := tgservices.NewVerificationOTPGenerator(6)
 
-	fSMHandler := tghandlers.NewFSMHandler(emailService, userRepo, otpGenerator)
+	fSMHandler := tghandlers.NewFSMHandler(
+		log,
+		emailService,
+		userRepo,
+		otpGenerator,
+	)
 
 	router.Register(models.StateAwaitingLogin, fSMHandler.HandleLogin)
 	router.Register(models.StateAwaitingOTP, fSMHandler.HandleOTP)
@@ -91,28 +94,4 @@ func NewAppTelegram() (
 	}
 
 	return app, closeFunc
-}
-
-func Start(ctx context.Context, a *AppTelegram) {
-	for update := range a.Bot.UpdateChannel {
-		if update.Message == nil {
-			continue
-		}
-
-		chatID := update.Message.Chat.ID
-		userID := update.Message.From.ID
-		message := update.Message
-	
-		fsm := tgservices.NewFSMContext(ctx, a.router.Storage, chatID, userID)
-
-		if update.Message.IsCommand() {
-			if err := a.commandRouter.HandleCommand(ctx, fsm, message, a.Bot); err != nil {
-				a.Log.Error("Error handling command: %v", err)
-			}
-		} else {
-			if err := a.router.ProcessUpdate(ctx, message, a.Bot, fsm); err != nil {
-				a.Log.Error("Error processing update: %v", err)
-			}
-		}
-	}
 }
