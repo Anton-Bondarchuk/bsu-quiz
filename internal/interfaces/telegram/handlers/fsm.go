@@ -38,31 +38,24 @@ func NewFSMHandler(
 func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	login := message.Text
 	const op = "fsm.handle_login"
+	h.log.With(
+		slog.String("op", op),
+	)
 
 	if err := fsm.SetData("login", login); err != nil {
-		h.log.With(
-			slog.String("op", op),
-			slog.String("err", err.Error()),
-		)
+		h.log.ErrorContext(ctx, "Error set login %w", err.Error())
 		return
 	}
 
 	otp, err := h.otpGenerator.Generate()
 	if err != nil {
-		h.log.With(
-			slog.String("op", op),
-			slog.String("err", err.Error()),
-		)
+		h.log.ErrorContext(ctx, "Failed code generating %w", err.Error())
 		return
 	}
 
 	err = fsm.SetData("code", otp)
-
 	if err != nil {
-		h.log.With(
-			slog.String("op", op),
-			slog.String("err", err.Error()),
-		)
+		h.log.ErrorContext(ctx, "Failed set otp code %w", err.Error())
 		return
 	}
 
@@ -84,40 +77,30 @@ func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *infra.FSMContext, mes
 func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	inputOTP := message.Text
 	const op = "fsm.handle_otp"
+	h.log.With(
+		slog.String("op", op),
+	)
+
 	fsmOTP, err := fsm.GetData("code")
 	if err != nil {
-		h.log.With(
-			slog.String("op", op),
-			slog.String("err", err.Error()),
-		)
+		h.log.ErrorContext(ctx, "Failed get otp code %w", err.Error())
 		return
 	}
 
 	loginInterface, err := fsm.GetData("login")
 	if err != nil {
-		h.log.With(
-			slog.String("op", op),
-			slog.String("err", err.Error()),
-		)
+		h.log.ErrorContext(ctx, "Failed to get login %w", err.Error())
 	}
 
 	login, ok := loginInterface.(string)
 	if !ok {
-		h.log.With(
-			slog.String("op", op),
-			slog.String("login", login),
-		)
+		h.log.ErrorContext(ctx, "Failed to get login %w", err.Error())
 		return
 	}
 
 	if len(inputOTP) != 6 || inputOTP != fsmOTP {
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Неверный проверочный код. Введите проверчный код:")
-		_, err := bot.Telegram.Send(msg)
-		h.log.With(
-			slog.String("op", op),
-			slog.String("otp", inputOTP),
-			slog.String("err", err.Error()),
-		)
+		bot.Telegram.Send(msg)
 		return
 	}
 
@@ -127,17 +110,13 @@ func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *infra.FSMContext, messa
 }
 
 func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *infra.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
-	loginInterface, err := fsm.GetData("login")
 	const op = "fsm.hanle_registered"
-	if err != nil {
-		h.log.With(
-			slog.String("op", op),
-			slog.String("err", err.Error()),
-		)
-		return
-	}
-
+	h.log.With(
+		slog.String("op", op),
+	)
+	
 	// note: login was verifided in endpoint above
+	loginInterface, _ := fsm.GetData("login")
 	login, _ := loginInterface.(string)
 	user := &models.User{
 		ID:    bot.Telegram.Self.ID,
@@ -145,12 +124,9 @@ func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *infra.FSMContext
 		Role:  int64(infra.RoleUser),
 	}
 
-	err = h.userRepo.UpdateOrCreate(ctx, user)
+	err := h.userRepo.UpdateOrCreate(ctx, user)
 	if err != nil {
-		h.log.With(
-			slog.String("op", op),
-			slog.String("err", err.Error()),
-		)
+		h.log.ErrorContext(ctx, "Failed update user %w", err.Error())
 		return
 	}
 

@@ -1,11 +1,11 @@
 package repository
 
 import (
+	"bsu-quiz/internal/config"
+	"bsu-quiz/internal/domain/models"
 	"context"
 	"encoding/json"
 	"fmt"
-	"bsu-quiz/internal/config"
-	"bsu-quiz/internal/domain/models"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -18,15 +18,33 @@ type RedisStorage struct {
 	defaultExpiry time.Duration
 }
 
-// NewRedisStorage creates a new Redis-based storage
-func NewRedisStorage(config config.RedisConfig) *RedisStorage {
-	// Set defaults if not provided
-	if config.KeyPrefix == "" {
-		config.KeyPrefix = "fsm:"
+type RdsOptions struct {
+	prefix        string
+	defaultExpiry time.Duration
+}
+
+type RdsOption func(*RdsOptions)
+
+func WithRdsPrefix(prefix string) RdsOption {
+	return func(args *RdsOptions) {
+		args.prefix = prefix
+	}
+}
+
+func WithRdsDefaultExpiry(defaultExpiry time.Duration) RdsOption {
+	return func(args *RdsOptions) {
+		args.defaultExpiry = defaultExpiry
+	}
+}
+
+func NewRedisStorage(config config.RedisConfig, setters ...RdsOption) *RedisStorage {
+	opt := &RdsOptions{
+		prefix: "fsm:",
+		defaultExpiry: 24 * time.Hour,
 	}
 
-	if config.DefaultExpiry == 0 {
-		config.DefaultExpiry = 24 * time.Hour
+	for _, set := range setters {
+		set(opt)
 	}
 
 	client := redis.NewClient(&redis.Options{
@@ -37,8 +55,8 @@ func NewRedisStorage(config config.RedisConfig) *RedisStorage {
 
 	return &RedisStorage{
 		client:        client,
-		keyPrefix:     config.KeyPrefix,
-		defaultExpiry: config.DefaultExpiry,
+		keyPrefix:     opt.prefix,
+		defaultExpiry: opt.defaultExpiry,
 	}
 }
 
@@ -150,4 +168,3 @@ func (s *RedisStorage) Close() error {
 func (s *RedisStorage) Ping(ctx context.Context) error {
 	return s.client.Ping(ctx).Err()
 }
-

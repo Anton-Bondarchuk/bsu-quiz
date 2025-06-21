@@ -5,9 +5,9 @@ import (
 	"bsu-quiz/internal/domain/models"
 	"bsu-quiz/internal/infra/logger/handlers/slogpretty"
 	"bsu-quiz/internal/infra/repository"
-	"context"
 	tgservices "bsu-quiz/internal/infra/services/telegram"
-
+	"context"
+	"time"
 
 	"log/slog"
 	"os"
@@ -57,7 +57,11 @@ func newPgxConn(ctx context.Context, cfg config.StorageConfig) *pgxpool.Pool {
 }
 
 func newRedisStorage(ctx context.Context, cfg config.RedisConfig) *repository.RedisStorage {
-	storage := repository.NewRedisStorage(cfg)
+	storage := repository.NewRedisStorage(
+		cfg, 
+		repository.WithRdsDefaultExpiry(24 * time.Hour),
+		repository.WithRdsPrefix("fsm:"),
+	)
 
 	if err := storage.Ping(ctx); err != nil {
 		panic(err)
@@ -68,6 +72,7 @@ func newRedisStorage(ctx context.Context, cfg config.RedisConfig) *repository.Re
 
 
 func setupLogger(env string) *slog.Logger {
+	// Note: add to prod setup sentry logger
 	var log *slog.Logger
 
 	switch env {
