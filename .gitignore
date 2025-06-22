@@ -5,3 +5,5 @@ congig/local.yml
 
 *.rdb 
 /docker/data
+
+00**
