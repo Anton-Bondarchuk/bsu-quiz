@@ -1,8 +1,8 @@
-package services
+package service
 
 import (
 	"bsu-quiz/telegram/internal/domain/models"
-	"bsu-quiz/telegram/internal/infra/services/errors"
+	"bsu-quiz/telegram/internal/infra/service/errors"
 	"sync"
 
 	"context"

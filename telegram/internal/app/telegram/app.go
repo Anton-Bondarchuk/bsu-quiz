@@ -5,7 +5,7 @@ import (
 	"bsu-quiz/telegram/internal/domain/models"
 	"bsu-quiz/telegram/internal/infra/clients"
 	"bsu-quiz/telegram/internal/infra/repository"
-	"bsu-quiz/telegram/internal/infra/services"
+	"bsu-quiz/telegram/internal/infra/service"
 	"bsu-quiz/telegram/internal/interfaces/handlers"
 
 	"context"
@@ -22,8 +22,8 @@ type AppTelegram struct {
 	Conn          *pgxpool.Pool
 	Bot           *models.Bot
 	Log           *slog.Logger
-	router        *services.FSMRouter 
-	commandRouter *services.CommandRouter
+	router        *service.FSMRouter 
+	commandRouter *service.CommandRouter
 }
 
 func NewAppTelegram() (
@@ -45,12 +45,12 @@ func NewAppTelegram() (
 
 	redisStorage := newRedisStorage(ctx, cfg.RedisConfig)
 
-	router := services.NewFSMRouter(redisStorage)
+	router := service.NewFSMRouter(redisStorage)
 
 	emailClient := clients.NewEmailClient(cfg.EmailConfig)
-	emailService := services.NewEmailService(emailClient)
+	emailService := service.NewEmailService(emailClient)
 	userRepo := repository.NewPgUserRepository(db)
-	otpGenerator := services.NewVerificationOTPGenerator(6)
+	otpGenerator := service.NewVerificationOTPGenerator(6)
 
 	fSMHandler := handlers.NewFSMHandler(
 		log,
@@ -64,7 +64,7 @@ func NewAppTelegram() (
 	router.Register(models.StateRegistered, fSMHandler.HandleRegistered)
 
 	// Initialize command router
-	commandRouter := services.NewCommandRouter()
+	commandRouter := service.NewCommandRouter()
 	
 	startHandler := handlers.NewStartCommand(telegramBot)
 	helpHandler := handlers.NewHelpCommand(telegramBot)

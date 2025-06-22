@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"bsu-quiz/telegram/internal/domain/models"
-	"bsu-quiz/telegram/internal/infra/services"
+	"bsu-quiz/telegram/internal/infra/service"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -19,7 +19,7 @@ func NewRegisterCommand(
 	}
 }
 
-func (h *RegisterCommand) Execute(message *tgbotapi.Message, fsm *services.FSMContext) {
+func (h *RegisterCommand) Execute(message *tgbotapi.Message, fsm *service.FSMContext) {
 	msg := tgbotapi.NewMessage(message.Chat.ID, "🔑 Пожалуйста, введите ваш login для регистрации.")
 
 	h.bot.Telegram.Send(msg)

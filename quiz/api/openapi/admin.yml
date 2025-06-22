@@ -1,0 +1,896 @@
+openapi: 3.0.0
+info:
+  title: Quiz App Admin Panel API
+  description: API for managing users, quizzes, and game sessions in the Quiz Application
+  version: 1.0.0
+  contact:
+    name: Quiz App Support
+    # email:
+
+servers:
+  # - url: https://api.quizapp.com/v1
+  #   description: Production server
+  # - url: https://staging.quizapp.com/v1
+  #   description: Staging server
+  - url: http://localhost:8080/v1
+    description: Local development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier for the user
+        login:
+          type: string
+          description: User's login name
+        roleFlags:
+          type: integer
+          description: Bit mask for user roles (1=User, 2=Admin, 4=Teacher, 8=Blocked)
+      required:
+        - id
+        - login
+        - roleFlags
+
+    UserCreate:
+      type: object
+      properties:
+        login:
+          type: string
+          description: User's login name
+        password:
+          type: string
+          format: password
+          description: User's password
+        roleFlags:
+          type: integer
+          description: Bit mask for user roles
+      required:
+        - login
+        - password
+
+    Quiz:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the quiz
+        userId:
+          type: integer
+          format: int64
+          description: ID of the user who created the quiz
+        title:
+          type: string
+          description: Quiz title
+        isPublic:
+          type: boolean
+          description: Whether the quiz is publicly available
+        createdBy:
+          type: string
+          description: Username of the creator
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+      required:
+        - id
+        - userId
+        - title
+        - isPublic
+        - createdBy
+        - createdAt
+        - updatedAt
+
+    Question:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the question
+        quizId:
+          type: string
+          format: uuid
+          description: ID of the quiz this question belongs to
+        text:
+          type: string
+          description: Question text
+        timeLimit:
+          type: integer
+          description: Time limit in seconds
+        points:
+          type: integer
+          description: Points for correct answer
+        position:
+          type: integer
+          description: Position in the quiz
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/Option'
+      required:
+        - id
+        - quizId
+        - text
+        - timeLimit
+        - points
+        - position
+
+    Option:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the option
+        questionId:
+          type: string
+          format: uuid
+          description: ID of the question this option belongs to
+        text:
+          type: string
+          description: Option text
+        isCorrect:
+          type: boolean
+          description: Whether this is the correct answer
+        position:
+          type: integer
+          description: Position in the options list
+      required:
+        - id
+        - questionId
+        - text
+        - isCorrect
+        - position
+
+    GameSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the session
+        quizId:
+          type: string
+          format: uuid
+          description: ID of the quiz for this session
+        hostId:
+          type: integer
+          format: int64
+          description: ID of the session host
+        joinCode:
+          type: string
+          description: Code for participants to join
+        statusFlags:
+          type: integer
+          description: Bit mask for session status (1=Waiting, 2=Active, 4=Paused, 8=Finished)
+        currentQuestionIndex:
+          type: integer
+          description: Index of the current question
+        startedAt:
+          type: string
+          format: date-time
+          description: Start timestamp
+        endedAt:
+          type: string
+          format: date-time
+          description: End timestamp
+        participants:
+          type: array
+          items:
+            $ref: '#/components/schemas/Participant'
+      required:
+        - id
+        - quizId
+        - hostId
+        - joinCode
+        - statusFlags
+        - currentQuestionIndex
+
+    Participant:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the participant
+        sessionId:
+          type: string
+          format: uuid
+          description: ID of the session
+        userId:
+          type: integer
+          format: int64
+          nullable: true
+          description: ID of the user (if registered)
+        login:
+          type: string
+          description: Display name for the participant
+        score:
+          type: integer
+          description: Current score
+        joinedAt:
+          type: string
+          format: date-time
+          description: Join timestamp
+      required:
+        - id
+        - sessionId
+        - login
+        - score
+        - joinedAt
+
+    Answer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the answer
+        participantId:
+          type: string
+          format: uuid
+          description: ID of the participant
+        questionId:
+          type: string
+          format: uuid
+          description: ID of the question
+        optionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the selected option
+        isCorrect:
+          type: boolean
+          description: Whether the answer is correct
+        responseTimeMs:
+          type: integer
+          nullable: true
+          description: Response time in milliseconds
+        pointsAwarded:
+          type: integer
+          description: Points awarded for this answer
+        answeredAt:
+          type: string
+          format: date-time
+          description: Answer timestamp
+      required:
+        - id
+        - participantId
+        - questionId
+        - isCorrect
+        - pointsAwarded
+        - answeredAt
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+      required:
+        - code
+        - message
+
+paths:
+  /admin/users:
+    get:
+      summary: Get all users
+      description: Retrieves a paginated list of all users
+      operationId: getAllUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  totalCount:
+                    type: integer
+                  page:
+                    type: integer
+                  totalPages:
+                    type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a new user
+      description: Creates a new user with specified roles
+      operationId: createUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/users/{id}:
+    get:
+      summary: Get user by ID
+      description: Retrieves a specific user by ID
+      operationId: getUserById
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+          description: User ID
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update user
+      description: Updates user information
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                login:
+                  type: string
+                roleFlags:
+                  type: integer
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete user
+      description: Deletes a user
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+          description: User ID
+      responses:
+        '204':
+          description: User deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/users/{id}/role:
+    put:
+      summary: Update user role
+      description: Updates a user's role flags
+      operationId: updateUserRole
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+            format: int64
+          required: true
+          description: User ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                roleFlags:
+                  type: integer
+                  description: Bit mask for user roles
+              required:
+                - roleFlags
+      responses:
+        '200':
+          description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/quizzes:
+    get:
+      summary: Get all quizzes
+      description: Retrieves a paginated list of all quizzes
+      operationId: getAllQuizzes
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+      responses:
+        '200':
+          description: List of quizzes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  quizzes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Quiz'
+                  totalCount:
+                    type: integer
+                  page:
+                    type: integer
+                  totalPages:
+                    type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/quizzes/{id}:
+    get:
+      summary: Get quiz by ID
+      description: Retrieves a specific quiz by ID
+      operationId: getQuizById
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Quiz ID
+      responses:
+        '200':
+          description: Quiz details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quiz'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Quiz not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete quiz
+      description: Deletes a quiz
+      operationId: deleteQuiz
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Quiz ID
+      responses:
+        '204':
+          description: Quiz deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Quiz not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/sessions:
+    get:
+      summary: Get all game sessions
+      description: Retrieves a paginated list of all game sessions
+      operationId: getAllSessions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+        - in: query
+          name: status
+          schema:
+            type: integer
+          description: Filter by status flags
+      responses:
+        '200':
+          description: List of game sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSession'
+                  totalCount:
+                    type: integer
+                  page:
+                    type: integer
+                  totalPages:
+                    type: integer
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/sessions/{id}:
+    get:
+      summary: Get session by ID
+      description: Retrieves a specific game session by ID
+      operationId: getSessionById
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Session ID
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSession'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/sessions/{id}/end:
+    post:
+      summary: End a game session
+      description: Forcefully ends a game session
+      operationId: endSession
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+            format: uuid
+          required: true
+          description: Session ID
+      responses:
+        '200':
+          description: Session ended successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /admin/dashboard/stats:
+    get:
+      summary: Get admin dashboard statistics
+      description: Retrieves statistics for the admin dashboard
+      operationId: getDashboardStats
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalUsers:
+                    type: integer
+                  totalQuizzes:
+                    type: integer
+                  totalSessions:
+                    type: integer
+                  activeSessions:
+                    type: integer
+                  recentUsers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  recentQuizzes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Quiz'
+                  systemStatus:
+                    type: string
+                    enum: [healthy, warning, error]
+                  currentServerTime:
+                    type: string
+                    format: date-time
+                    example: "2025-06-22T15:36:47Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden - requires admin role
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+security:
+  - bearerAuth: []

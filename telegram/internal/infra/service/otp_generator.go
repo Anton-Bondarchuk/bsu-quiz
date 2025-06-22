@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"bsu-quiz/telegram/internal/ports"

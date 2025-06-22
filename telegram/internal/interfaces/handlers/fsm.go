@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"bsu-quiz/telegram/internal/domain/models"
-	"bsu-quiz/telegram/internal/infra/services"
+	"bsu-quiz/telegram/internal/infra/service"
 	"bsu-quiz/telegram/internal/ports"
 	"context"
 	"log/slog"
@@ -35,7 +35,7 @@ func NewFSMHandler(
 	}
 }
 
-func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *services.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
+func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *service.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	login := message.Text
 	const op = "fsm.handle_login"
 	h.log.With(
@@ -43,28 +43,28 @@ func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *services.FSMContext, 
 	)
 
 	if err := fsm.SetData("login", login); err != nil {
-		h.log.ErrorContext(ctx, "Error set login %w", err.Error())
+		h.log.ErrorContext(ctx, "Error setting login", "error", err)
 		return
 	}
 
 	otp, err := h.otpGenerator.Generate()
 	if err != nil {
-		h.log.ErrorContext(ctx, "Failed code generating %w", err.Error())
+		h.log.ErrorContext(ctx, "Failed code generation", "error", err)
 		return
 	}
 
 	err = fsm.SetData("code", otp)
 	if err != nil {
-		h.log.ErrorContext(ctx, "Failed set otp code %w", err.Error())
+		h.log.ErrorContext(ctx, "Failed to set OTP code", "error", err)
 		return
 	}
 
 	expiresAt := time.Now().Add(30 * time.Minute)
 
 	if err := h.emailService.Send(login, "Your Verification Code", otp, expiresAt); err != nil {
-		h.log.Error("Failed to sentd verification email: %v", err)
+		h.log.Error("Failed to send verification email", "error", err)
 	} else {
-		h.log.Debug("Verification email sent to %s", login)
+		h.log.Debug("Verification email sent", "recipient", login)
 	}
 
 	htmlMsg := "Спасибо! На ваш <a href=\"https://webmail.bsu.by/owa/#path=/mail\">email</a> был выслан проверочный код. \nПожалуйста, введите его:"
@@ -74,7 +74,7 @@ func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *services.FSMContext, 
 	fsm.Set(models.StateAwaitingOTP)
 }
 
-func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *services.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
+func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *service.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	inputOTP := message.Text
 	const op = "fsm.handle_otp"
 	h.log.With(
@@ -83,18 +83,18 @@ func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *services.FSMContext, me
 
 	fsmOTP, err := fsm.GetData("code")
 	if err != nil {
-		h.log.ErrorContext(ctx, "Failed get otp code %w", err.Error())
+		h.log.ErrorContext(ctx, "Failed get otp code", "error", err)
 		return
 	}
 
 	loginInterface, err := fsm.GetData("login")
 	if err != nil {
-		h.log.ErrorContext(ctx, "Failed to get login %w", err.Error())
+		h.log.ErrorContext(ctx, "Failed to get login", "error", err)
 	}
 
 	login, ok := loginInterface.(string)
 	if !ok {
-		h.log.ErrorContext(ctx, "Failed to get login %w", err.Error())
+		h.log.ErrorContext(ctx, "Failed to get login", "error", err)
 		return
 	}
 
@@ -109,7 +109,7 @@ func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *services.FSMContext, me
 	fsm.Set(models.StateRegistered)
 }
 
-func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *services.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
+func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *service.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	const op = "fsm.hanle_registered"
 	h.log.With(
 		slog.String("op", op),
@@ -121,12 +121,12 @@ func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *services.FSMCont
 	user := &models.User{
 		ID:    bot.Telegram.Self.ID,
 		Login: login,
-		Role:  int64(services.RoleUser),
+		Role:  int64(service.RoleUser),
 	}
 
 	err := h.userRepo.UpdateOrCreate(ctx, user)
 	if err != nil {
-		h.log.ErrorContext(ctx, "Failed update user %w", err.Error())
+		h.log.ErrorContext(ctx, "Failed update user %w", "error", err)
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *services.FSMCont
 	bot.Telegram.Send(msg)
 }
 
-func (h *fSMHandler) HandleDefault(ctx context.Context, fsm *services.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
+func (h *fSMHandler) HandleDefault(ctx context.Context, fsm *service.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Я не уверен, как ответить. Попробуйте использовать команду /start.")
 	bot.Telegram.Send(msg)
 }

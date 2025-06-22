@@ -5,7 +5,7 @@ import (
 	"bsu-quiz/telegram/internal/domain/models"
 	"bsu-quiz/telegram/internal/infra/logger/handlers/slogpretty"
 	"bsu-quiz/telegram/internal/infra/repository"
-	"bsu-quiz/telegram/internal/infra/services"
+	"bsu-quiz/telegram/internal/infra/service"
 	"context"
 	"time"
 
@@ -52,6 +52,7 @@ func newPgxConn(ctx context.Context, cfg config.StorageConfig) *pgxpool.Pool {
 		db.Close()
 		panic(err)
 	}
+	defer db.Close()
 
 	return db
 }
@@ -66,6 +67,7 @@ func newRedisStorage(ctx context.Context, cfg config.RedisConfig) *repository.Re
 	if err := storage.Ping(ctx); err != nil {
 		panic(err)
 	}
+	defer storage.Close()
 
 	return storage
 }
@@ -113,7 +115,7 @@ func Start(ctx context.Context, a *AppTelegram) {
 		userID := update.Message.From.ID
 		message := update.Message
 	
-		fsm := services.NewFSMContext(ctx, a.router.Storage, chatID, userID)
+		fsm := service.NewFSMContext(ctx, a.router.Storage, chatID, userID)
 
 		if update.Message.IsCommand() {
 			if err := a.commandRouter.HandleCommand(ctx, fsm, message, a.Bot); err != nil {
