@@ -6,6 +6,9 @@ storage:
 server:
   port: 8080
 
+amdin_panel: 
+  port: 8888
+
 bot:
   token: "5790471717:AAGNWzn5g5apmzaBARgjJz5TCsQrZpru9ZI"
   timeout: 60

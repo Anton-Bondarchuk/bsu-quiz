@@ -10,11 +10,12 @@ import (
 )
 
 type Config struct {
-	Env           string        `yaml:"env" env-default:"prod"`
-	StorageConfig StorageConfig `yaml:"storage" env-required:"true"`
-	BotConfig     BotConfig     `yaml:"bot" env-required:"true"`
-	EmailConfig   EmailConfig   `yaml:"email" env-required:"true"`
-	RedisConfig   RedisConfig   `yaml:"redis" env-required:"true"`
+	Env              string           `yaml:"env" env-default:"prod"`
+	StorageConfig    StorageConfig    `yaml:"storage" env-required:"true"`
+	BotConfig        BotConfig        `yaml:"bot" env-required:"true"`
+	EmailConfig      EmailConfig      `yaml:"email" env-required:"true"`
+	RedisConfig      RedisConfig      `yaml:"redis" env-required:"true"`
+	AdminPanelConfig AdminPanelConfig `yaml:"amdin_panel" env-required:"true"`
 }
 
 type StorageConfig struct {
@@ -46,6 +47,10 @@ type RedisConfig struct {
 	DB            int
 	KeyPrefix     string
 	DefaultExpiry time.Duration
+}
+
+type AdminPanelConfig struct {
+	Port int `yaml:"port" env-default:"8888"`
 }
 
 func MustLoad() *Config {

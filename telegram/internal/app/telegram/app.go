@@ -34,11 +34,9 @@ func NewAppTelegram() (
 	cfg := config.MustLoad()
 	log := setupLogger(cfg.Env)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-
-	telegramBot := newBot(cfg.BotConfig)
-	
 	defer cancel()
 
+	telegramBot := newBot(cfg.BotConfig)
 	db := newPgxConn(ctx, cfg.StorageConfig)
 
 	log.Info("Connected to database successfully")
@@ -69,6 +67,7 @@ func NewAppTelegram() (
 	startHandler := handlers.NewStartCommand(telegramBot)
 	helpHandler := handlers.NewHelpCommand(telegramBot)
 	registerHandler := handlers.NewRegisterCommand(telegramBot)
+	// NOTE: add to env variables
 	quizCommnad := handlers.NewQuizCommand(telegramBot, "https://api.telegram.org/bot")
 
 	// Register commands (handlers will be implemented later)

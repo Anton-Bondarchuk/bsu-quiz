@@ -3,6 +3,7 @@ package handlers
 import (
 	"bsu-quiz/telegram/internal/domain/models"
 	"bsu-quiz/telegram/internal/infra/service"
+	"context"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -22,7 +23,7 @@ func NewQuizCommand(
 	}
 }
 
-func (h *QuizComand) Execute(message *tgbotapi.Message, fsm *service.FSMContext) {
+func (c *QuizComand) Execute(ctx context.Context, message *tgbotapi.Message, fsm *service.FSMContext) {
 	kahootMsgText := "Нажмите на кнопку ниже, чтобы запустить приложение"
 	kbRow := tgbotapi.NewInlineKeyboardRow(
 		// tgbotapi.NewInlineKeyboardButtonWebApp("Kahoot!", tgbotapi.WebAppInfo{URL: h.WebAppUrl}),
@@ -33,5 +34,5 @@ func (h *QuizComand) Execute(message *tgbotapi.Message, fsm *service.FSMContext)
 	msg := tgbotapi.NewMessage(message.Chat.ID, kahootMsgText)
 	msg.ReplyMarkup = kb
 
-	h.bot.Telegram.Send(msg)
+	_, _ = c.bot.Telegram.Send(msg)
 }

@@ -70,8 +70,8 @@ func (h *fSMHandler) HandleLogin(ctx context.Context, fsm *service.FSMContext, m
 	htmlMsg := "Спасибо! На ваш <a href=\"https://webmail.bsu.by/owa/#path=/mail\">email</a> был выслан проверочный код. \nПожалуйста, введите его:"
 	msg := tgbotapi.NewMessage(message.Chat.ID, htmlMsg)
 	msg.ParseMode = "HTML"
-	bot.Telegram.Send(msg)
-	fsm.Set(models.StateAwaitingOTP)
+    _, _ = bot.Telegram.Send(msg)
+	_ = fsm.Set(models.StateAwaitingOTP)
 }
 
 func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *service.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
@@ -105,8 +105,8 @@ func (h *fSMHandler) HandleOTP(ctx context.Context, fsm *service.FSMContext, mes
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Регастрация завершена! Добро пожаловать, "+login+"!"+"\nВы можете перейти к сервису прохождения викторин кликнув на /quiz")
-	bot.Telegram.Send(msg)
-	fsm.Set(models.StateRegistered)
+	_, _ = bot.Telegram.Send(msg)
+	_ = fsm.Set(models.StateRegistered)
 }
 
 func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *service.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
@@ -131,10 +131,10 @@ func (h *fSMHandler) HandleRegistered(ctx context.Context, fsm *service.FSMConte
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Привет "+login+"! Вы уже зарегистрированы.")
-	bot.Telegram.Send(msg)
+	_, _ = bot.Telegram.Send(msg)
 }
 
 func (h *fSMHandler) HandleDefault(ctx context.Context, fsm *service.FSMContext, message *tgbotapi.Message, bot *models.Bot) {
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Я не уверен, как ответить. Попробуйте использовать команду /start.")
-	bot.Telegram.Send(msg)
+	_, _ = bot.Telegram.Send(msg)
 }

@@ -10,7 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-type CommandFunc func(message *tgbotapi.Message, fsm *FSMContext)
+type CommandFunc func(ctx context.Context, message *tgbotapi.Message, fsm *FSMContext)
 
 type CommandRouter struct {
 	mu       sync.RWMutex
@@ -38,7 +38,7 @@ func (r *CommandRouter) HandleCommand(ctx context.Context, fsm *FSMContext, mess
 	r.mu.RUnlock()
 
 	if exists {
-		go handler(message, fsm)
+		go handler(ctx, message, fsm)
 		
 		return nil
 	}

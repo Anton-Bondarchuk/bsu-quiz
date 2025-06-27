@@ -7,8 +7,6 @@ import (
 	"bsu-quiz/quiz/internal/interfaces/http/hanlders"
 	"context"
 	"log/slog"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -114,16 +112,6 @@ func NewAdminApp() *AdminApp{
 			adminRoutes.POST("/sessions/:id/end", adminHandler.EndSession)
 		}
 	}
-	
-	// Start server
-	port := getEnv("PORT", "8080")
-	log.Info("Server starting on port %s", port)
-	if err := router.Run(":" + port); err != nil {
-		// Add constan for fatal log level
-		// https://betterstack.com/community/guides/logging/logging-in-go/
-		log.Log(ctx, slog.Level(12), "Failed to start server: %v", err)
-		os.Exit(1)
-	}
 
 	return &AdminApp{
 		Config: cfg,
@@ -131,21 +119,4 @@ func NewAdminApp() *AdminApp{
 		Router: router,
 		Log:    log,
 	}
-}
-
-// Helper functions for environment variables
-func getEnv(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return defaultValue
-	}
-	return value
-}
-
-func getEnvAsInt(key string, defaultValue int) int {
-	valueStr := getEnv(key, "")
-	if value, err := strconv.Atoi(valueStr); err == nil {
-		return value
-	}
-	return defaultValue
 }

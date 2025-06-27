@@ -119,11 +119,11 @@ func Start(ctx context.Context, a *AppTelegram) {
 
 		if update.Message.IsCommand() {
 			if err := a.commandRouter.HandleCommand(ctx, fsm, message, a.Bot); err != nil {
-				a.Log.Error("Error handling command: %v", err)
+				a.Log.Error("Error handling command", "error", err)
 			}
 		} else {
 			if err := a.router.ProcessUpdate(ctx, message, a.Bot, fsm); err != nil {
-				a.Log.Error("Error processing update: %v", err)
+				a.Log.Error("Error processing update", "error", err)
 			}
 		}
 	}

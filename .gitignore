@@ -7,3 +7,5 @@ congig/local.yml
 /docker/data
 
 00**
+
+.DS_Store
