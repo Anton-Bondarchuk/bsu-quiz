@@ -118,11 +118,11 @@ func Start(ctx context.Context, a *AppTelegram) {
 		fsm := service.NewFSMContext(ctx, a.router.Storage, chatID, userID)
 
 		if update.Message.IsCommand() {
-			if err := a.commandRouter.HandleCommand(ctx, fsm, message, a.Bot); err != nil {
+			if err := a.commandRouter.HandleCommand(ctx, message, fsm); err != nil {
 				a.Log.Error("Error handling command", "error", err)
 			}
 		} else {
-			if err := a.router.ProcessUpdate(ctx, message, a.Bot, fsm); err != nil {
+			if err := a.router.ProcessUpdate(ctx, message, fsm); err != nil {
 				a.Log.Error("Error processing update", "error", err)
 			}
 		}

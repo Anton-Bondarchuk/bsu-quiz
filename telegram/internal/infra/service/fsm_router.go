@@ -10,7 +10,7 @@ import (
 )
 
 // HandlerFunc is a function that handles a message in a specific state
-type HandlerFunc func(ctx context.Context, fsm *FSMContext, message *tgbotapi.Message, bot *models.Bot)
+type HandlerFunc func(ctx context.Context, message *tgbotapi.Message, fsm *FSMContext)
 
 // FSMRouter manages state transitions and handlers (similar to aiogram's FSMRouter)
 type FSMRouter struct {
@@ -32,7 +32,7 @@ func (r *FSMRouter) Register(state models.State, handler HandlerFunc) {
 }
 
 // ProcessUpdate processes an update based on the current FSM state (similar to aiogram's Dispatcher)
-func (r *FSMRouter) ProcessUpdate(ctx context.Context, message *tgbotapi.Message, bot *models.Bot, fsm *FSMContext) error {
+func (r *FSMRouter) ProcessUpdate(ctx context.Context, message *tgbotapi.Message, fsm *FSMContext) error {
 	state, err := fsm.Current()
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func (r *FSMRouter) ProcessUpdate(ctx context.Context, message *tgbotapi.Message
 		return errors.New("no handler for state")
 	}
 
-	go handler(ctx, fsm, message, bot)
+	go handler(ctx, message, fsm)
 
 	return nil
 }

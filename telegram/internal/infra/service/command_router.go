@@ -1,7 +1,6 @@
 package service
 
 import (
-	"bsu-quiz/telegram/internal/domain/models"
 	"bsu-quiz/telegram/internal/infra/service/errors"
 	"sync"
 
@@ -30,7 +29,7 @@ func (r *CommandRouter) Register(command string, handler CommandFunc) {
 	r.commands[command] = handler
 }
 
-func (r *CommandRouter) HandleCommand(ctx context.Context, fsm *FSMContext, message *tgbotapi.Message, bot *models.Bot) error {
+func (r *CommandRouter) HandleCommand(ctx context.Context,  message *tgbotapi.Message, fsm *FSMContext) error {
 	command := message.Command()
 
 	r.mu.RLock()

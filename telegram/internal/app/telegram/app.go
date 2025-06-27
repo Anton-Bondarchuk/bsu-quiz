@@ -55,6 +55,7 @@ func NewAppTelegram() (
 		emailService,
 		userRepo,
 		otpGenerator,
+		telegramBot,
 	)
 
 	router.Register(models.StateAwaitingLogin, fSMHandler.HandleLogin)
